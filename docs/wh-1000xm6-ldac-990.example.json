@@ -1,0 +1,20 @@
+{
+  "devices": {
+    "02:00:00:00:00:01": {
+      "adaptive": false,
+      "channelMode": "Stereo",
+      "rate96": false,
+      "allowStereo": true,
+      "bits24": true,
+      "quality": "HQ",
+      "codec": "LDAC",
+      "allowMono": false,
+      "rate88": false,
+      "rate48": true,
+      "driver": "Ldac",
+      "bits16": false,
+      "holdSeconds": 3,
+      "rate44": false
+    }
+  }
+}

@@ -173,7 +173,7 @@ UCHAR PeerAvrcpState(_In_ PDEVICE_CONTEXT A2dp, _Out_ PLONG LastError)
 }
 
 /* The headphones changed their volume: hand it to the A2DP device's endpoint. */
-static VOID PeerVolumeFromHeadphones(_In_ PDEVICE_CONTEXT Avrcp, _In_ UCHAR Volume)
+static VOID PeerVolumeFromHeadphones(_In_ PDEVICE_CONTEXT Avrcp, _In_ UCHAR Volume, _In_ BOOLEAN Changed)
 {
     KIRQL irql;
     PEER *p;
@@ -181,7 +181,11 @@ static VOID PeerVolumeFromHeadphones(_In_ PDEVICE_CONTEXT Avrcp, _In_ UCHAR Volu
     KeAcquireSpinLock(&g_PeerLock, &irql);
     p = FindPeer(Avrcp->RemoteAddress, FALSE);
     if (p && p->A2dp && p->A2dp->VolumeWorkItem) {
-        InterlockedExchange(&p->A2dp->RemoteVolume, Volume);
+        WdfSpinLockAcquire(p->A2dp->Lock);
+        p->A2dp->RemoteVolume = Volume;
+        if (Changed)
+            p->A2dp->RemoteVolumeChanged = TRUE;
+        WdfSpinLockRelease(p->A2dp->Lock);
         WdfWorkItemEnqueue(p->A2dp->VolumeWorkItem);
     }
     KeReleaseSpinLock(&g_PeerLock, irql);
@@ -194,9 +198,12 @@ static int OpsSend(void *context, const uint8_t *buf, size_t len)
     return NT_SUCCESS(L2capSendSignal((PDEVICE_CONTEXT)context, buf, len)) ? 0 : -1;
 }
 
-static void OpsVolume(void *context, uint8_t volume)
+static void OpsVolume(void *context, uint8_t volume, int remote_change)
 {
-    ((PDEVICE_CONTEXT)context)->HeadphoneVolume = volume;
+    PDEVICE_CONTEXT ctx = (PDEVICE_CONTEXT)context;
+    ctx->HeadphoneVolume = volume;
+    if (remote_change)
+        ctx->HeadphoneVolumeChanged = TRUE;
 }
 
 static USHORT KeyUsage(_In_ uint8_t Op)
@@ -264,13 +271,15 @@ static VOID AvrcpFlush(_In_ PDEVICE_CONTEXT Ctx)
     UCHAR keys[RTL_NUMBER_OF(Ctx->Keys)];
     ULONG count, i;
     LONG volume;
-    BOOLEAN waiting;
+    BOOLEAN waiting, changed;
 
     WdfSpinLockAcquire(Ctx->Lock);
     count = Ctx->KeyCount;
     RtlCopyMemory(keys, Ctx->Keys, count);
     Ctx->KeyCount = 0;
     volume = Ctx->HeadphoneVolume;
+    changed = Ctx->HeadphoneVolumeChanged;
+    Ctx->HeadphoneVolumeChanged = FALSE;
     Ctx->HeadphoneVolume = -1;
     waiting = Ctx->Avrcp.caps_pending || Ctx->Avrcp.set_pending;
     WdfSpinLockRelease(Ctx->Lock);
@@ -278,7 +287,7 @@ static VOID AvrcpFlush(_In_ PDEVICE_CONTEXT Ctx)
     for (i = 0; i < count; i++)
         SendKey(Ctx, keys[i]);
     if (volume >= 0)
-        PeerVolumeFromHeadphones(Ctx, (UCHAR)volume);
+        PeerVolumeFromHeadphones(Ctx, (UCHAR)volume, changed);
     if (waiting)
         WdfTimerStart(Ctx->SignalTimer, WDF_REL_TIMEOUT_IN_MS(2000));
 }

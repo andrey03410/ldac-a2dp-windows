@@ -4,6 +4,12 @@ An open-source replacement for the Windows Bluetooth audio source (`BthA2dp`) th
 
 **English** · [Русский](#русский)
 
+### Sony WH-1000XM6 with ASUS USB-BT500
+
+The [XM6 settings profile](docs/wh-1000xm6-ldac-990.example.json) selects LDAC HQ at 990 kbit/s, 48 kHz, 24-bit stereo with adaptive bitrate disabled. To use it, copy its device entry into the `devices` object in `%ProgramData%\LdacA2dp\settings.json` and replace the example address `02:00:00:00:00:01` with your headphones' Bluetooth address.
+
+Test build `0.3.327.1919` restored the Windows volume flyout when swiping on the right earcup. A 30-second playback check on Windows 11 recorded 5,798 media packets sent and zero send failures.
+
 ## What it does
 
 - **Kernel driver** (`driver/LdacA2dp`, KMDF):

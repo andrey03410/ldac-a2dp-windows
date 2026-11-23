@@ -208,6 +208,7 @@ VOID AudioFillStatus(_In_ PDEVICE_CONTEXT Ctx, _Inout_ LDACA2DP_STATUS *Out)
     Out->PcmBuffered = Ctx->PcmCount;
     Out->PcmDroppedBytes = Ctx->PcmDroppedBytes;
     WdfSpinLockRelease(Ctx->PcmLock);
+    Out->VolumeChangeSequence = (UINT8)InterlockedCompareExchange(&Ctx->VolumeChangeSequence, 0, 0);
     Out->VolumeLevel = Ctx->VolumeLevel;
     Out->Muted = Ctx->Muted != 0;
     Out->AbsoluteVolume = PeerAbsoluteVolume(Ctx);
@@ -347,12 +348,21 @@ static NTSTATUS AudioEvtMuteRetrieve(_In_ ACXMUTE Mute, _In_ ULONG Channel, _Out
 VOID AudioEvtVolumeWorkItem(_In_ WDFWORKITEM WorkItem)
 {
     PDEVICE_CONTEXT ctx = GetDeviceContext(WdfWorkItemGetParentObject(WorkItem));
-    LONG v = InterlockedExchange(&ctx->RemoteVolume, -1);
+    LONG v;
+    BOOLEAN changed;
+    WdfSpinLockAcquire(ctx->Lock);
+    v = ctx->RemoteVolume;
+    changed = ctx->RemoteVolumeChanged;
+    ctx->RemoteVolume = -1;
+    ctx->RemoteVolumeChanged = FALSE;
+    WdfSpinLockRelease(ctx->Lock);
 
     if (v < 0 || !ctx->VolumeElement)
         return;
     ctx->VolumeLevel = AudioAvrcpToLevel((UCHAR)v);
     AcxVolumeChangeLevelNotification(ctx->VolumeElement);
+    if (changed && ctx->EnableVolumeOsd)
+        InterlockedIncrement(&ctx->VolumeChangeSequence);
 }
 
 /* ---- endpoint name ------------------------------------------------------------- */

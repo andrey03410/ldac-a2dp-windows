@@ -109,7 +109,10 @@ typedef struct _DEVICE_CONTEXT {
     ACXMUTE MuteElement;
     LONG VolumeLevel;          /* 1/65536 dB, LDACA2DP_VOLUME_MIN..0 */
     ULONG Muted;
-    volatile LONG RemoteVolume; /* from the headphones (AVRCP 0..127), -1 none: applied by VolumeWorkItem */
+    BOOLEAN EnableVolumeOsd;  /* XM6 A2DP endpoint */
+    BOOLEAN RemoteVolumeChanged; /* under Lock, coalesced until the volume work item */
+    volatile LONG VolumeChangeSequence;
+    LONG RemoteVolume; /* from the headphones (AVRCP 0..127), -1 none: applied by VolumeWorkItem */
     WDFWORKITEM VolumeWorkItem;
 
     /* AVRCP role (avrcp_glue.c), under Lock */
@@ -117,6 +120,7 @@ typedef struct _DEVICE_CONTEXT {
     VHFHANDLE Vhf;
     UCHAR Keys[8];             /* HID usages to report once the lock is dropped (0 = release) */
     ULONG KeyCount;
+    BOOLEAN HeadphoneVolumeChanged;
     LONG HeadphoneVolume;      /* -1 none, else to pass to the A2DP peer once the lock is dropped */
     LONG ConnectTries;         /* our AVCTP opens left before waiting for the headphones */
     BOOLEAN RetryPending;

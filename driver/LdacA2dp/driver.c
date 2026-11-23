@@ -25,20 +25,25 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 }
 
 /* Which of the headphones' devnodes this is, from its hardware IDs. */
-static DEVICE_ROLE DetectRole(_In_ PWDFDEVICE_INIT DeviceInit)
+static DEVICE_ROLE DetectRole(_In_ PWDFDEVICE_INIT DeviceInit, _Out_ BOOLEAN *Xm6)
 {
     WCHAR ids[512];
     ULONG got = 0;
     PWCHAR p;
 
+    *Xm6 = FALSE;
     RtlZeroMemory(ids, sizeof(ids));
     if (!NT_SUCCESS(WdfFdoInitQueryProperty(DeviceInit, DevicePropertyHardwareID, sizeof(ids) - 2 * sizeof(WCHAR), ids,
                                             &got)))
         return RoleA2dp;
     for (p = ids; *p; p++) {
-        if (_wcsnicmp(p, L"{0000110e", 9) == 0)
+        const WCHAR *id = wcsrchr(p, L'\\');
+        id = id ? id + 1 : p;
+        if (_wcsicmp(id, L"{0000110b-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0f8a") == 0)
+            *Xm6 = TRUE;
+        if (_wcsnicmp(id, L"{0000110e", 9) == 0)
             return RoleAvrcp;
-        if (_wcsnicmp(p, L"{0000110c", 9) == 0)
+        if (_wcsnicmp(id, L"{0000110c", 9) == 0)
             return RoleIdle;
     }
     return RoleA2dp;
@@ -56,12 +61,13 @@ NTSTATUS LdacA2dpEvtDeviceAdd(_In_ WDFDRIVER Driver, _Inout_ PWDFDEVICE_INIT Dev
     WDFDEVICE device;
     PDEVICE_CONTEXT ctx;
     DEVICE_ROLE role;
+    BOOLEAN xm6;
     NTSTATUS status;
 
     UNREFERENCED_PARAMETER(Driver);
     PAGED_CODE();
 
-    role = DetectRole(DeviceInit);
+    role = DetectRole(DeviceInit, &xm6);
     if (role == RoleIdle) {
         WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&attributes, DEVICE_CONTEXT);
         status = WdfDeviceCreate(&DeviceInit, &attributes, &device);
@@ -104,6 +110,7 @@ NTSTATUS LdacA2dpEvtDeviceAdd(_In_ WDFDRIVER Driver, _Inout_ PWDFDEVICE_INIT Dev
 
     ctx = GetDeviceContext(device);
     ctx->Device = device;
+    ctx->EnableVolumeOsd = xm6;
     ctx->Role = role;
     ctx->Psm = role == RoleAvrcp ? AVRCP_PSM : AVDTP_PSM;
     ctx->RemoteVolume = -1;

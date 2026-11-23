@@ -135,6 +135,7 @@ static void register_volume(avrcp *a)
 
 static void send_set_volume(avrcp *a, uint8_t volume)
 {
+    a->set_value = volume;
     a->set_label = new_label(a);
     a->set_pending = send_vendor(a, a->set_label, AVCTP_CMD, AVC_CTYPE_CONTROL, PDU_SET_ABSOLUTE_VOLUME, &volume, 1) == 0;
     a->want_volume = AVRCP_VOLUME_UNKNOWN;
@@ -278,9 +279,12 @@ static void on_vendor_response(avrcp *a, uint8_t label, uint8_t ctype, uint8_t p
     if (pdu == PDU_REGISTER_NOTIFICATION && a->notify_pending && label == a->notify_label && plen >= 1 &&
         params[0] == EVT_VOLUME_CHANGED) {
         if ((ctype == AVC_RSP_INTERIM || ctype == AVC_RSP_CHANGED) && plen >= 2) {
-            a->volume = params[1] & AVRCP_VOLUME_MAX;
+            uint8_t value = params[1] & AVRCP_VOLUME_MAX;
+            int remote_change = ctype == AVC_RSP_CHANGED && a->volume != AVRCP_VOLUME_UNKNOWN &&
+                                value != a->volume && !(a->set_pending && value == a->set_value);
+            a->volume = value;
             if (a->ops->volume)
-                a->ops->volume(a->ctx, a->volume);
+                a->ops->volume(a->ctx, value, remote_change);
             if (ctype == AVC_RSP_CHANGED)
                 register_volume(a); /* notifications are one-shot */
         } else {

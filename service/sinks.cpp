@@ -336,6 +336,7 @@ public:
         LDACA2DP_STATUS st;
         if (!probe.Probe(st))
             return err = "no LdacA2dp device", false;
+        volumeChangeSequence_ = st.VolumeChangeSequence;
         rate_ = st.PcmSampleRate ? st.PcmSampleRate : 48000;  // the INF default until a stream has run
         handle_ = probe.Detach();
         ov_.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
@@ -365,6 +366,10 @@ public:
             CloseHandle(ov.hEvent);
             open_ = ok && n == sizeof(st) && st.PcmOpen;
             if (ok && n == sizeof(st)) {
+                if (volumeChangeSequence_ != st.VolumeChangeSequence) {
+                    volumeChangeSequence_ = st.VolumeChangeSequence;
+                    NotifyBluetoothVolumeChange();
+                }
                 // The endpoint has a hardware volume control, so Windows no
                 // longer scales the PCM: the headphones do (AVRCP absolute
                 // volume) or, without it, we do.
@@ -486,6 +491,24 @@ private:
     bool open_ = false;
     Clock::time_point nextOpenPoll_{};
     float gain_ = 1.0f, targetGain_ = 1.0f;
+    // Windows 11 BthAvrcp publishes this empty notification for the shell.
+    // Resolve the private API at runtime so audio still works if it is unavailable.
+    void NotifyBluetoothVolumeChange()
+    {
+        using Publish = LONG (NTAPI *)(UINT64, const GUID *, const void *, ULONG, const void *);
+        static const auto publish = reinterpret_cast<Publish>(
+            GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlPublishWnfStateData"));
+        constexpr UINT64 bluetoothAvrcpVolumeChanged = 0x0992022FA3BC4075ULL;
+        LONG result = publish ? publish(bluetoothAvrcpVolumeChanged, nullptr, nullptr, 0, nullptr)
+                              : static_cast<LONG>(0xC000007A); // STATUS_PROCEDURE_NOT_FOUND
+        if (result < 0 && !volumeNoticeErrorLogged_) {
+            printf("volume: Windows OSD notification failed (0x%08lX)\n", static_cast<ULONG>(result));
+            volumeNoticeErrorLogged_ = true;
+        }
+    }
+
+    UINT8 volumeChangeSequence_ = 0;
+    bool volumeNoticeErrorLogged_ = false;
     int absVolume_ = -1;
 };
 

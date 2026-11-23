@@ -77,7 +77,7 @@ typedef struct _LDACA2DP_STATUS {
     UINT8 Muted;
     UINT8 AbsoluteVolume;     /* the headphones apply the volume (AVRCP); else the service must */
     UINT8 AvrcpState;         /* LDACA2DP_AVRCP_*: the AVRCP device of the same headphones */
-    UINT8 Reserved3;
+    UINT8 VolumeChangeSequence; /* modulo 256; previously reserved (always zero) */
     INT32 AvrcpLastError;     /* NTSTATUS of the last failed AVCTP channel open */
 } LDACA2DP_STATUS;
 

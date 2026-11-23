@@ -37,6 +37,11 @@ LdacA2dp.sys = 1,,
 %LdacA2dp.AvrcpDesc% = LdacA2dp_Avrcp, BTHENUM\{0000110e-0000-1000-8000-00805f9b34fb}_VID&000102b0_PID&0000
 %LdacA2dp.IdleDesc%  = LdacA2dp_Idle,  BTHENUM\{0000110c-0000-1000-8000-00805f9b34fb}_VID&000102b0_PID&0000
 
+; Sony WH-1000XM6 (USB-IF VID 054c, PID 0f8a)
+%LdacA2dp.DeviceDesc% = LdacA2dp_Device, BTHENUM\{0000110b-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0f8a
+%LdacA2dp.AvrcpDesc% = LdacA2dp_Avrcp, BTHENUM\{0000110e-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0f8a
+%LdacA2dp.IdleDesc%  = LdacA2dp_Idle,  BTHENUM\{0000110c-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0f8a
+
 [LdacA2dp_Device.NT]
 CopyFiles = LdacA2dp_CopyFiles
 

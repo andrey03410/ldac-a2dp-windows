@@ -44,7 +44,7 @@ typedef struct avrcp_ops {
     int (*send)(void *ctx, const uint8_t *buf, size_t len);
     /* The headphones' volume (0..127): the current one once they confirm
      * absolute volume, then every change made on the headphones. */
-    void (*volume)(void *ctx, uint8_t volume);
+    void (*volume)(void *ctx, uint8_t volume, int remote_change);
     /* A button on the headphones (PASS THROUGH), pressed or released. */
     void (*key)(void *ctx, uint8_t op, int pressed);
 } avrcp_ops;
@@ -66,7 +66,7 @@ typedef struct avrcp {
     uint8_t volume;           /* last known headphone volume, AVRCP_VOLUME_UNKNOWN until reported */
     uint8_t caps_pending, caps_label;
     uint8_t notify_pending, notify_label;
-    uint8_t set_pending, set_label;
+    uint8_t set_pending, set_label, set_value;
     uint8_t want_volume;      /* to send once the pending SetAbsoluteVolume is answered */
 
     /* TG */

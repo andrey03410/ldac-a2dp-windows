@@ -12,6 +12,7 @@ static uint8_t g_out[8][64];
 static size_t g_out_len[8];
 static int g_sent;
 static int g_volume = -1;
+static int g_gestures;
 static int g_key = -1, g_pressed = -1;
 
 static int on_send(void *ctx, const uint8_t *buf, size_t len)
@@ -25,10 +26,11 @@ static int on_send(void *ctx, const uint8_t *buf, size_t len)
     return 0;
 }
 
-static void on_volume(void *ctx, uint8_t v)
+static void on_volume(void *ctx, uint8_t v, int remote_change)
 {
     (void)ctx;
     g_volume = v;
+    g_gestures += remote_change;
 }
 
 static void on_key(void *ctx, uint8_t op, int pressed)
@@ -133,6 +135,18 @@ void test_avrcp(void)
     CHECK_EQ(feed(&a, "12110e0d4800001958310000020d30"), 1);
     CHECK_EQ(g_volume, 48);
     CHECK(sent_is(0, "40110e034800001958310000050d00000000"));
+
+    CHECK_EQ(g_gestures, 1); /* only the unsolicited change, not the initial level */
+    CHECK_EQ(feed(&a, "42110e0f4800001958310000020d30"), 0); /* re-registration baseline */
+    CHECK_EQ(feed(&a, "42110e0d4800001958310000020d30"), 1); /* duplicate value */
+    CHECK_EQ(g_gestures, 1);
+    CHECK_EQ(avrcp_set_volume(&a, 55), 0);
+    CHECK_EQ(feed(&a, "52110e0d4800001958310000020d37"), 1); /* echo before SET response */
+    CHECK_EQ(feed(&a, "62110e0948000019585000000137"), 0);
+    CHECK_EQ(feed(&a, "72110e0d4800001958310000020d37"), 1); /* echo after response */
+    CHECK_EQ(g_gestures, 1);
+    CHECK_EQ(feed(&a, "82110e0d4800001958310000020d32"), 1); /* downward swipe */
+    CHECK_EQ(g_gestures, 2);
 
     /* TG: buttons */
     CHECK_EQ(feed(&a, "50110e00487c440000"), 1);
