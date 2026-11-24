@@ -109,7 +109,7 @@ typedef struct _DEVICE_CONTEXT {
     ACXMUTE MuteElement;
     LONG VolumeLevel;          /* 1/65536 dB, LDACA2DP_VOLUME_MIN..0 */
     ULONG Muted;
-    BOOLEAN EnableVolumeOsd;  /* XM6 A2DP endpoint */
+    BOOLEAN IsXm6;  /* Sony WH-1000XM6 device, including its AVRCP node */
     BOOLEAN RemoteVolumeChanged; /* under Lock, coalesced until the volume work item */
     volatile LONG VolumeChangeSequence;
     LONG RemoteVolume; /* from the headphones (AVRCP 0..127), -1 none: applied by VolumeWorkItem */

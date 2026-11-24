@@ -10,6 +10,7 @@
  * while holding one.
  */
 #include "driver.h"
+#include "consumer_keys.h"
 
 /* ---- peers: the A2DP and AVRCP devices of one pair of headphones ------------ */
 
@@ -206,28 +207,10 @@ static void OpsVolume(void *context, uint8_t volume, int remote_change)
         ctx->HeadphoneVolumeChanged = TRUE;
 }
 
-static USHORT KeyUsage(_In_ uint8_t Op)
-{
-    switch (Op) {
-    case AVRCP_OP_PLAY:
-    case AVRCP_OP_PAUSE:
-        return 0xCD; /* Play/Pause: Windows' media session decides which */
-    case AVRCP_OP_STOP: return 0xB7;
-    case AVRCP_OP_FORWARD: return 0xB5;
-    case AVRCP_OP_BACKWARD: return 0xB6;
-    case AVRCP_OP_FAST_FORWARD: return 0xB3;
-    case AVRCP_OP_REWIND: return 0xB4;
-    case AVRCP_OP_VOLUME_UP: return 0xE9;
-    case AVRCP_OP_VOLUME_DOWN: return 0xEA;
-    case AVRCP_OP_MUTE: return 0xE2;
-    default: return 0;
-    }
-}
-
 static void OpsKey(void *context, uint8_t op, int pressed)
 {
     PDEVICE_CONTEXT ctx = (PDEVICE_CONTEXT)context;
-    USHORT usage = KeyUsage(op);
+    USHORT usage = KeyUsage(op, ctx->IsXm6);
 
     if (usage && ctx->KeyCount < RTL_NUMBER_OF(ctx->Keys))
         ctx->Keys[ctx->KeyCount++] = pressed ? (UCHAR)usage : 0;

@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "avrcp.h"
+#include "../../driver/LdacA2dp/consumer_keys.h"
 
 static uint8_t g_out[8][64];
 static size_t g_out_len[8];
@@ -154,6 +155,15 @@ void test_avrcp(void)
     CHECK_EQ(g_key, AVRCP_OP_PLAY);
     CHECK_EQ(g_pressed, 1);
     CHECK_EQ(feed(&a, "60110e00487cc40000"), 1);
+    CHECK_EQ(g_pressed, 0);
+    /* XM6 wear detection sends directional transport commands. */
+    CHECK_EQ(KeyUsage(g_key, 1), 0xB0); /* Play */
+    CHECK_EQ(KeyUsage(g_key, 0), 0xCD); /* legacy headset button */
+    CHECK_EQ(feed(&a, "50110e00487c460000"), 1);
+    CHECK_EQ(g_pressed, 1);
+    CHECK_EQ(KeyUsage(g_key, 1), 0xB1); /* Pause */
+    CHECK_EQ(KeyUsage(g_key, 0), 0xCD);
+    CHECK_EQ(feed(&a, "60110e00487cc60000"), 1);
     CHECK_EQ(g_pressed, 0);
     CHECK_EQ(feed(&a, "70110e00487c010000"), 1); /* unknown op: not implemented */
     CHECK(sent_is(0, "72110e08487c010000"));

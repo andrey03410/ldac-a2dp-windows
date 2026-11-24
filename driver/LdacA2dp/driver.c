@@ -30,23 +30,26 @@ static DEVICE_ROLE DetectRole(_In_ PWDFDEVICE_INIT DeviceInit, _Out_ BOOLEAN *Xm
     WCHAR ids[512];
     ULONG got = 0;
     PWCHAR p;
+    DEVICE_ROLE role = RoleA2dp;
 
     *Xm6 = FALSE;
     RtlZeroMemory(ids, sizeof(ids));
     if (!NT_SUCCESS(WdfFdoInitQueryProperty(DeviceInit, DevicePropertyHardwareID, sizeof(ids) - 2 * sizeof(WCHAR), ids,
                                             &got)))
         return RoleA2dp;
-    for (p = ids; *p; p++) {
+    for (p = ids; *p; p += wcslen(p) + 1) {
         const WCHAR *id = wcsrchr(p, L'\\');
+        const WCHAR *model;
         id = id ? id + 1 : p;
-        if (_wcsicmp(id, L"{0000110b-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0f8a") == 0)
+        model = wcschr(id, L'_');
+        if (model && _wcsicmp(model, L"_VID&0002054c_PID&0f8a") == 0)
             *Xm6 = TRUE;
         if (_wcsnicmp(id, L"{0000110e", 9) == 0)
-            return RoleAvrcp;
+            role = RoleAvrcp;
         if (_wcsnicmp(id, L"{0000110c", 9) == 0)
-            return RoleIdle;
+            role = RoleIdle;
     }
-    return RoleA2dp;
+    return role;
 }
 
 NTSTATUS LdacA2dpEvtDeviceAdd(_In_ WDFDRIVER Driver, _Inout_ PWDFDEVICE_INIT DeviceInit)
@@ -110,7 +113,7 @@ NTSTATUS LdacA2dpEvtDeviceAdd(_In_ WDFDRIVER Driver, _Inout_ PWDFDEVICE_INIT Dev
 
     ctx = GetDeviceContext(device);
     ctx->Device = device;
-    ctx->EnableVolumeOsd = xm6;
+    ctx->IsXm6 = xm6;
     ctx->Role = role;
     ctx->Psm = role == RoleAvrcp ? AVRCP_PSM : AVDTP_PSM;
     ctx->RemoteVolume = -1;

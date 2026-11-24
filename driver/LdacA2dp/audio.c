@@ -361,7 +361,7 @@ VOID AudioEvtVolumeWorkItem(_In_ WDFWORKITEM WorkItem)
         return;
     ctx->VolumeLevel = AudioAvrcpToLevel((UCHAR)v);
     AcxVolumeChangeLevelNotification(ctx->VolumeElement);
-    if (changed && ctx->EnableVolumeOsd)
+    if (changed && ctx->IsXm6)
         InterlockedIncrement(&ctx->VolumeChangeSequence);
 }
 
