@@ -49,6 +49,7 @@ foreach ($f in 'LdacA2dp.inf', 'LdacA2dp.sys', 'ldaca2dp.cat', 'LdacA2dpTest.cer
     if (Test-Path "$drv\$f") { Copy-Item "$drv\$f" "$out\driver" }
 }
 Copy-Item "$root\build\ldacsvc.exe" $out
+Copy-Item "$root\build\LdacMedia.exe" $out
 Copy-Item "$pub\LdacConfig.exe" $out
 Copy-Item "$root\installer\*" $out
 Set-Content -Path "$out\version.txt" -Value $version -Encoding ascii

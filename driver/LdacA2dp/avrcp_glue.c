@@ -10,7 +10,6 @@
  * while holding one.
  */
 #include "driver.h"
-#include "consumer_keys.h"
 
 /* ---- peers: the A2DP and AVRCP devices of one pair of headphones ------------ */
 
@@ -210,10 +209,8 @@ static void OpsVolume(void *context, uint8_t volume, int remote_change)
 static void OpsKey(void *context, uint8_t op, int pressed)
 {
     PDEVICE_CONTEXT ctx = (PDEVICE_CONTEXT)context;
-    USHORT usage = KeyUsage(op, ctx->IsXm6);
-
-    if (usage && ctx->KeyCount < RTL_NUMBER_OF(ctx->Keys))
-        ctx->Keys[ctx->KeyCount++] = pressed ? (UCHAR)usage : 0;
+    if (KeyUsage(op, ctx->IsXm6) && ctx->KeyCount < RTL_NUMBER_OF(ctx->Keys))
+        ctx->Keys[ctx->KeyCount++] = MakeKeyReport(op, ctx->IsXm6, pressed);
 }
 
 static const avrcp_ops LdacA2dpAvrcpOps = { OpsSend, OpsVolume, OpsKey };
@@ -235,30 +232,42 @@ static UCHAR g_ConsumerReport[] = {
     0xC0,             /* End Collection */
 };
 
-static VOID SendKey(_In_ PDEVICE_CONTEXT Ctx, _In_ USHORT Usage)
+/* XM6 exposes the normal consumer keys on report 1 and a private transport
+ * collection on report 2. Only LdacMedia listens to the latter. */
+static UCHAR g_Xm6Report[] = {
+    0x05, 0x0C, 0x09, 0x01, 0xA1, 0x01, 0x85, 0x01,
+    0x15, 0x00, 0x26, 0xFF, 0x03, 0x19, 0x00, 0x2A, 0xFF, 0x03,
+    0x75, 0x10, 0x95, 0x01, 0x81, 0x00, 0xC0,
+    0x06, 0xDA, 0xFF, 0x0A, 0xD0, 0xA2, /* page FFDA, usage A2D0 */
+    0xA1, 0x01, 0x85, 0x02,
+    0x09, 0x01, 0x15, 0x00, 0x26, 0xFF, 0x00,
+    0x75, 0x08, 0x95, 0x01, 0x81, 0x02, /* command byte */
+    0x81, 0x03, 0xC0                    /* byte of padding */
+};
+
+static VOID SendKey(_In_ PDEVICE_CONTEXT Ctx, _In_ LdacKeyReport *Report)
 {
-    UCHAR report[2] = { (UCHAR)Usage, (UCHAR)(Usage >> 8) };
     HID_XFER_PACKET packet;
 
     if (!Ctx->Vhf)
         return;
-    packet.reportBuffer = report;
-    packet.reportBufferLen = sizeof(report);
-    packet.reportId = 0;
+    packet.reportBuffer = Report->id ? (PUCHAR)Report : &Report->value;
+    packet.reportBufferLen = Report->id ? sizeof(*Report) : sizeof(*Report) - 1;
+    packet.reportId = Report->id;
     (VOID)VhfReadReportSubmit(Ctx->Vhf, &packet); /* VHF copies the report */
 }
 
 /* Work the core recorded under the lock: keys, the headphones' volume. */
 static VOID AvrcpFlush(_In_ PDEVICE_CONTEXT Ctx)
 {
-    UCHAR keys[RTL_NUMBER_OF(Ctx->Keys)];
+    LdacKeyReport keys[RTL_NUMBER_OF(Ctx->Keys)];
     ULONG count, i;
     LONG volume;
     BOOLEAN waiting, changed;
 
     WdfSpinLockAcquire(Ctx->Lock);
     count = Ctx->KeyCount;
-    RtlCopyMemory(keys, Ctx->Keys, count);
+    RtlCopyMemory(keys, Ctx->Keys, count * sizeof(keys[0]));
     Ctx->KeyCount = 0;
     volume = Ctx->HeadphoneVolume;
     changed = Ctx->HeadphoneVolumeChanged;
@@ -268,7 +277,7 @@ static VOID AvrcpFlush(_In_ PDEVICE_CONTEXT Ctx)
     WdfSpinLockRelease(Ctx->Lock);
 
     for (i = 0; i < count; i++)
-        SendKey(Ctx, keys[i]);
+        SendKey(Ctx, &keys[i]);
     if (volume >= 0)
         PeerVolumeFromHeadphones(Ctx, (UCHAR)volume, changed);
     if (waiting)
@@ -350,7 +359,9 @@ NTSTATUS AvrcpStart(_In_ PDEVICE_CONTEXT Ctx)
 
     /* Buttons: a consumer-control HID device below which vhf.sys sits as lower
      * filter (INF). Without it AVRCP still runs, just without buttons. */
-    VHF_CONFIG_INIT(&vhf, WdfDeviceWdmGetDeviceObject(Ctx->Device), sizeof(g_ConsumerReport), g_ConsumerReport);
+    VHF_CONFIG_INIT(&vhf, WdfDeviceWdmGetDeviceObject(Ctx->Device),
+                    Ctx->IsXm6 ? sizeof(g_Xm6Report) : sizeof(g_ConsumerReport),
+                    Ctx->IsXm6 ? g_Xm6Report : g_ConsumerReport);
     vhf.VhfClientContext = Ctx;
     status = VhfCreate(&vhf, &Ctx->Vhf);
     if (NT_SUCCESS(status)) {

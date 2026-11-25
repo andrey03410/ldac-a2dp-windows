@@ -19,3 +19,18 @@ static inline uint8_t KeyUsage(uint8_t Op, int xm6)
     default: return 0;
     }
 }
+
+typedef struct {
+    uint8_t id;
+    uint8_t value;
+    uint8_t high;
+} LdacKeyReport;
+
+static inline LdacKeyReport MakeKeyReport(uint8_t op, int xm6, int pressed)
+{
+    uint8_t usage = KeyUsage(op, xm6);
+    LdacKeyReport report = { 0, (uint8_t)(pressed ? usage : 0), 0 };
+    if (xm6)
+        report.id = (op == AVRCP_OP_PLAY || op == AVRCP_OP_PAUSE) ? 2 : 1;
+    return report;
+}

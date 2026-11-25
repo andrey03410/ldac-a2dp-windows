@@ -10,6 +10,8 @@ The [XM6 settings profile](docs/wh-1000xm6-ldac-990.example.json) selects LDAC H
 
 Test build `0.3.327.1919` restored the Windows volume flyout when swiping on the right earcup. A 30-second playback check on Windows 11 recorded 5,798 media packets sent and zero send failures.
 
+Build `0.5.329.1` routes XM6 Play and Pause to the current Windows media session via `LdacMedia.exe`, started at user logon. This preserves the direction of wear-detection commands in players such as Chrome. With no current media session, there is nothing to control.
+
 ## What it does
 
 - **Kernel driver** (`driver/LdacA2dp`, KMDF):

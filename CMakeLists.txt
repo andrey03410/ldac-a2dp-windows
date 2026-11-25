@@ -85,6 +85,11 @@ endif()
 add_executable(ldacsvc service/main.cpp)
 target_link_libraries(ldacsvc PRIVATE ldacsvc_core)
 
+add_executable(LdacMedia WIN32 service/media.cpp)
+target_compile_features(LdacMedia PRIVATE cxx_std_17)
+target_compile_definitions(LdacMedia PRIVATE UNICODE _UNICODE NOMINMAX)
+target_link_libraries(LdacMedia PRIVATE windowsapp user32)
+
 # --- tests ------------------------------------------------------------------
 enable_testing()
 add_executable(avdtp_tests

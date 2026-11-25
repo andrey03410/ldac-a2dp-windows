@@ -25,7 +25,7 @@ function Step($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run install.cmd (it asks for administrator rights).' }
 
-foreach ($f in 'driver\LdacA2dp.inf', 'driver\LdacA2dp.sys', 'driver\ldaca2dp.cat', 'ldacsvc.exe', 'LdacConfig.exe', 'uninstall.ps1', 'version.txt') {
+foreach ($f in 'driver\LdacA2dp.inf', 'driver\LdacA2dp.sys', 'driver\ldaca2dp.cat', 'ldacsvc.exe', 'LdacMedia.exe', 'LdacConfig.exe', 'uninstall.ps1', 'version.txt') {
     if (-not (Test-Path (Join-Path $src $f))) { throw "The package is incomplete: $f is missing." }
 }
 $version = (Get-Content (Join-Path $src 'version.txt') -Raw).Trim()
@@ -63,11 +63,13 @@ if (Get-Service LdacSvc -ErrorAction SilentlyContinue) {
     Stop-Service LdacSvc -Force -ErrorAction SilentlyContinue   # an upgrade: free ldacsvc.exe
 }
 Get-Process LdacConfig -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process LdacMedia -ErrorAction SilentlyContinue | Where-Object Path -eq "$dst\LdacMedia.exe" | Stop-Process
 New-Item -ItemType Directory -Force -Path $dst | Out-Null
-foreach ($f in 'ldacsvc.exe', 'LdacConfig.exe', 'uninstall.ps1', 'uninstall.cmd', 'version.txt', 'README.txt') {
+foreach ($f in 'ldacsvc.exe', 'LdacMedia.exe', 'LdacConfig.exe', 'uninstall.ps1', 'uninstall.cmd', 'version.txt', 'README.txt') {
     if (Test-Path (Join-Path $src $f)) { Copy-Item (Join-Path $src $f) $dst -Force }
 }
 Copy-Item (Join-Path $src 'driver') $dst -Recurse -Force
+& "$src\register-media.ps1"
 
 # ---- 4. driver ------------------------------------------------------------------------------
 Step 'Installing the driver package'

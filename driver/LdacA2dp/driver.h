@@ -28,6 +28,7 @@
 #include "public.h"
 #include "avdtp_source.h"
 #include "avrcp.h"
+#include "consumer_keys.h"
 
 #define LDACA2DP_POOL_TAG 'adlA'
 #define LDACA2DP_SIG_READ_SIZE 1024
@@ -118,7 +119,7 @@ typedef struct _DEVICE_CONTEXT {
     /* AVRCP role (avrcp_glue.c), under Lock */
     avrcp Avrcp;
     VHFHANDLE Vhf;
-    UCHAR Keys[8];             /* HID usages to report once the lock is dropped (0 = release) */
+    LdacKeyReport Keys[8];     /* complete reports to submit once the lock is dropped */
     ULONG KeyCount;
     BOOLEAN HeadphoneVolumeChanged;
     LONG HeadphoneVolume;      /* -1 none, else to pass to the A2DP peer once the lock is dropped */

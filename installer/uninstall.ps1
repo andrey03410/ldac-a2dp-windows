@@ -23,6 +23,8 @@ if (Get-Service LdacSvc -ErrorAction SilentlyContinue) {
     if (Test-Path $svc) { & $svc uninstall } else { Stop-Service LdacSvc -Force; sc.exe delete LdacSvc | Out-Null }
 }
 Get-Process LdacConfig -ErrorAction SilentlyContinue | Stop-Process -Force
+Unregister-ScheduledTask -TaskName 'LdacA2dp-Media' -Confirm:$false -ErrorAction SilentlyContinue
+Get-Process LdacMedia -ErrorAction SilentlyContinue | Where-Object Path -eq "$dst\LdacMedia.exe" | Stop-Process
 
 Step 'Removing the driver packages (the headphones go back to the Windows drivers)'
 $list = pnputil /enum-drivers | Out-String

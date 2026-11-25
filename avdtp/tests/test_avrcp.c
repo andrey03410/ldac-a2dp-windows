@@ -163,6 +163,15 @@ void test_avrcp(void)
     CHECK_EQ(g_pressed, 1);
     CHECK_EQ(KeyUsage(g_key, 1), 0xB1); /* Pause */
     CHECK_EQ(KeyUsage(g_key, 0), 0xCD);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PAUSE, 1, 1).id, 2);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PAUSE, 1, 0).id, 2);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PAUSE, 1, 0).value, 0);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PLAY, 1, 1).id, 2);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PLAY, 1, 1).value, 0xB0);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PAUSE, 1, 1).value, 0xB1);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_FORWARD, 1, 1).id, 1);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PAUSE, 0, 1).id, 0);
+    CHECK_EQ(MakeKeyReport(AVRCP_OP_PAUSE, 0, 1).value, 0xCD);
     CHECK_EQ(feed(&a, "60110e00487cc60000"), 1);
     CHECK_EQ(g_pressed, 0);
     CHECK_EQ(feed(&a, "70110e00487c010000"), 1); /* unknown op: not implemented */
